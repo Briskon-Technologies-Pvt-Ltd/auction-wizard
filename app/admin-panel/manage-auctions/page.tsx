@@ -16,6 +16,7 @@ interface Auction {
   ended: boolean;
   approved: boolean;
   auctiontype: string;
+  approval_status?: string
 }
 
 export default function ManageAuctions() {
@@ -99,24 +100,29 @@ export default function ManageAuctions() {
     }
   };
 
-  const handleReject = async (id: string) => {
-    try {
-      const res = await fetch(`/api/auctions/${id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (data.success) {
-        setAuctions(auctions.filter((auction) => auction.id !== id));
-        setStats((prev) => ({
-          ...prev,
-          totalAuctions: prev.totalAuctions - 1,
-          pendingAuctions: prev.pendingAuctions - 1,
-        }));
-      }
-    } catch (error) {
-      console.error("Failed to reject auction:", error);
+const handleReject = async (id: string) => {
+  try {
+    const res = await fetch(`/api/status-auctions/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approval_status: "rejected" }),
+    });
+
+    // Be defensive: if server returns HTML on error, avoid JSON parse crash
+    const data = await res.json().catch(() => ({} as any));
+
+    if (res.ok && data?.success) {
+      // Hide from UI
+      setAuctions(prev => prev.filter(a => a.id !== id));
+    } else {
+      console.error("Reject failed:", res.status, data?.message);
     }
-  };
+  } catch (e) {
+    console.error("Error rejecting auction:", e);
+  }
+};  
+
+
 
   const handleDelete = async (id: string) => {
     try {
@@ -137,12 +143,20 @@ export default function ManageAuctions() {
     }
   };
 
+  // const filteredAuctions = auctions.filter((auction) => {
+  //   if (filter === "all") return true;
+  //   if (filter === "approved") return auction.approved;
+  //   if (filter === "pending") return !auction.approved;
+  //   return true;
+  // });
   const filteredAuctions = auctions.filter((auction) => {
-    if (filter === "all") return true;
-    if (filter === "approved") return auction.approved;
-    if (filter === "pending") return !auction.approved;
-    return true;
-  });
+  if (auction.approval_status === "rejected") return false;
+  if (filter === "all") return true;
+  if (filter === "approved") return auction.approved;
+  if (filter === "pending") return !auction.approved;
+  return true;
+});
+
 
   if (!user || user.role !== "admin") return null;
 

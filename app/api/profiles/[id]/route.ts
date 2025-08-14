@@ -25,6 +25,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       .select("role, email")
       .eq("id", id)
       .single();
+
     if (userError || !user) {
       return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
     }
