@@ -2,7 +2,7 @@
 
 import type React from "react";
 import Select from "react-select";
-
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useState, useRef, useEffect } from "react";
 import { Inter } from "next/font/google";
 import { Clock, Users, CheckCircle, AlertCircle, Calendar } from "lucide-react";
@@ -541,14 +541,24 @@ const handlePrevious = () => {
       return;
     }
 
+const { data: { session }, error } = await supabase.auth.getSession();
+
+if (!session) {
+  console.error("No active session");
+  return;
+}
+  const userId = session.user.id;
+
     try {
       if (!user) {
         alert("Please log in to launch the auction.");
         return;
       }
+      
       const formDataToSend = {
         ...formData,
         createdby: user.email,
+        seller: userId,
         productimages: formData.productImages.map((img) => img.url),
         productdocuments: formData.productDocuments.map((doc) => doc.url || ""),
         percent: formData.bidIncrementType === "percentage" ? formData.bidIncrementRules[0]?.incrementValue : null,
@@ -559,7 +569,10 @@ const handlePrevious = () => {
 
       const res = await fetch(`/api/auctions?user=${encodeURIComponent(user.email)}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+         headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`, // This is important!
+      },
         body: JSON.stringify(formDataToSend),
       });
       const result = await res.json();

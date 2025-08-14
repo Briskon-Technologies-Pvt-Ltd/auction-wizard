@@ -199,7 +199,7 @@ async function createAuction(req: NextRequest, user: any): Promise<NextResponse>
         { status: 400 }
       );
     }
-
+    
     // Prepare auction record
     const newAuction = keysToLowerCase({
       id: auctionId,
